@@ -40,6 +40,7 @@ void setup() {
   while (!Serial && millis() - start < 5000) { }
   delay(4000);
   mpuSetup(); // Initialize the MPU6050 sensor
+  median_offset(); // Calculate the median offsets for the accelerometer
   /*
   ledcSetup(PWM_CHANNEL1, PWM_FREQ, PWM_RES);
   ledcSetup(PWM_CHANNEL2, PWM_FREQ, PWM_RES);
@@ -65,8 +66,10 @@ void setup() {
 }
  
 void loop() {
-  mpuRead(); // Read and print MPU6050 data
-  /*
+  gyro_last_update = micros(); // Update the last update time for gyro readings
+  complimentary_filter(); // Apply the complementary filter to combine gyro and accelerometer data
+  /*rotational_rates(); // Read and print MPU6050 data
+  
   if (Serial.available() > 0) {
     char c = Serial.read();
     if (c == 'p') {
