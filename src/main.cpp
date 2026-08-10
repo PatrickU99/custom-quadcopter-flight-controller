@@ -1,47 +1,24 @@
 
 #include <Arduino.h>
 #include <Wire.h>
+#include "motor.h"
 #include "mpu.h"
+#include "rate_pid.h"
  
-// ---- ESP32-S3 motor test: arm, hold a steady spin, stop by pressing 'p' ----
-// Props OFF unless you mean to actually spin one. Keep the battery connector
-// within easy reach at all times - that is your real "stop" button.
- 
-const int MOTOR_PIN1   = 4;
-const int MOTOR_PIN2   = 5;
-const int MOTOR_PIN3   = 6;
-const int MOTOR_PIN4   = 7;
-
-const int PWM_CHANNEL1 = 0;
-const int PWM_CHANNEL2 = 1;
-const int PWM_CHANNEL3 = 2;
-const int PWM_CHANNEL4 = 3;
-
-const int PWM_FREQ    = 50;   // 50Hz standard servo/ESC refresh rate
-const int PWM_RES     = 12;   // 12-bit - matches what the LEDC timer can actually hit at 50Hz
- 
-const int ARM_US      = 1000; // minimum throttle (us) - arms the ESC, also = safe idle
-const int SPIN_US     = 1300; // steady low throttle to hold
- 
+#define BUTTON_A 1 // Pin for the button to start/stop the motors 
 bool running = false; // becomes false once 'p' is pressed
- 
-uint32_t usToDuty(int us) {
-  uint32_t period_us = 1000000UL / PWM_FREQ;
-  uint32_t maxDuty = (1UL << PWM_RES) - 1;
-  return (uint32_t)((uint64_t)us * maxDuty / period_us);
-}
- 
+static bool lastButtonState = HIGH; 
+
 void setup() {
-  
-  
-  
+   
   Serial.begin(115200);
   unsigned long start = millis();
   while (!Serial && millis() - start < 5000) { }
-  delay(4000);
+  
+  pinMode(BUTTON_A, INPUT_PULLDOWN); // Enable internal pull-up resistor for the button pin
   mpuSetup(); // Initialize the MPU6050 sensor
-  median_offset(); // Calculate the median offsets for the accelerometer
-  /*
+  //median_offset(); // Calculate the median offsets for the accelerometer
+  
   ledcSetup(PWM_CHANNEL1, PWM_FREQ, PWM_RES);
   ledcSetup(PWM_CHANNEL2, PWM_FREQ, PWM_RES);
   ledcSetup(PWM_CHANNEL3, PWM_FREQ, PWM_RES);
@@ -60,39 +37,32 @@ void setup() {
   ledcWrite(PWM_CHANNEL4, usToDuty(ARM_US));
   
   delay(4000);
- 
+  gyro_last_update = micros();
   Serial.println("Armed. Press 's' to start. and press p to stop.");
-  */
+  
 }
  
 void loop() {
-  gyro_last_update = micros(); // Update the last update time for gyro readings
-  complimentary_filter(); // Apply the complementary filter to combine gyro and accelerometer data
-  /*rotational_rates(); // Read and print MPU6050 data
+  //complimentary_filter(); // Apply the complementary filter to combine gyro and accelerometer data
   
-  if (Serial.available() > 0) {
-    char c = Serial.read();
-    if (c == 'p') {
-      running = false;
+  bool buttonPressed = (digitalRead(BUTTON_A) == HIGH); // Check if the button is pressed (active HIGH)
+    if (buttonPressed && !lastButtonState) {
+      running = !running; // Toggle the running state when the button is pressed
       ledcWrite(PWM_CHANNEL1, usToDuty(ARM_US));
       ledcWrite(PWM_CHANNEL2, usToDuty(ARM_US));
       ledcWrite(PWM_CHANNEL3, usToDuty(ARM_US));
       ledcWrite(PWM_CHANNEL4, usToDuty(ARM_US));
+      integral_roll = 0; // Reset the integral term when stopping
       Serial.println("Stopped. Motor at idle.");
     }
-    else if (c == 's') {
-      running = true;
-      Serial.println("Spinning at steady low throttle.");
-    }
-  }
+  
  
   if (running) {
-    ledcWrite(PWM_CHANNEL1, usToDuty(SPIN_US));
-    ledcWrite(PWM_CHANNEL2, usToDuty(SPIN_US));
-    ledcWrite(PWM_CHANNEL3, usToDuty(SPIN_US));
-    ledcWrite(PWM_CHANNEL4, usToDuty(SPIN_US));
+    
+    rate_roll_loop(1500, 0); // Call the rate roll loop function with the desired speed and roll
   }
+  lastButtonState = buttonPressed;
  delay(20); // ~50Hz refresh
   
-  */
+
 }

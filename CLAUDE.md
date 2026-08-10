@@ -103,7 +103,7 @@ Labeled L/R (CCW/CW). Rotation direction per motor position not yet finally conf
 3. Motor-position-to-GPIO mapping (M1-M4 vs GPIO4/5/6/7) not finalized against frame's CW/CCW convention — needs to match whatever mixing logic is chosen.
 4. Prop rotation direction per motor position not confirmed/matched.
 5. No hardware failsafe/watchdog for motor cutoff yet.
-6. Motors 2-4 (GPIO5/6/7) wired but not individually isolation-tested to the same rigor as motor 1 (GPIO4).
+
 7. Soldering motor phase wires to ESC — need to confirm ESC-side bullet connectors match gender/size (3.5mm) of motor's pre-installed bullets.
 8. `motor.h`/`motor.cpp` split not yet done.
 

@@ -27,7 +27,7 @@ float gyro_part = 0.995; // Complementary filter coefficient for gyro
 float accel_part = 0.005; // Complementary filter coefficient for accelerometer
 
 float delta_t; // Time difference between gyro readings in seconds
-uint32_t gyro_last_update = micros(); // Store the last update time for gyro readings
+uint32_t gyro_last_update; // Store the last update time for gyro readings
 
 std::vector<float> vector_x; // Vectors to hold the last 11 readings for median filtering
 std::vector<float> vector_y; 
