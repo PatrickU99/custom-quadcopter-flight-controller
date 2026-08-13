@@ -7,7 +7,7 @@
  
 #define BUTTON_A 1 // Pin for the button to start/stop the motors 
 bool running = false; // becomes false once 'p' is pressed
-static bool lastButtonState = HIGH; 
+static bool lastButtonState = HIGH; // Track the last state of the button to detect changes
 
 void setup() {
    
@@ -53,16 +53,20 @@ void loop() {
       ledcWrite(PWM_CHANNEL3, usToDuty(ARM_US));
       ledcWrite(PWM_CHANNEL4, usToDuty(ARM_US));
       integral_roll = 0; // Reset the integral term when stopping
-      Serial.println("Stopped. Motor at idle.");
+      last_error_roll = 0; // Reset the last error when stopping
+
+      if (running) {
+        gyro_last_update = micros();
+      } 
+      Serial.println(running ? "Started." : "Stopped. Motor at idle.");
     }
   
  
   if (running) {
-    
     rate_roll_loop(1500, 0); // Call the rate roll loop function with the desired speed and roll
   }
   lastButtonState = buttonPressed;
- delay(20); // ~50Hz refresh
+  delay(3); // Small delay to avoid bouncing issues with the button
   
 
 }
