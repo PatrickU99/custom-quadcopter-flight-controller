@@ -5,9 +5,9 @@
 #include "rate_pid.h"
 #include "motor.h"
 
-#define KP 5
+#define KP 4
 #define KI 0
-#define KD 0
+#define KD 0.13
 
 float dt;
 float integral_roll = 0; // Integral term for roll PID
@@ -23,7 +23,7 @@ void rate_roll_pid(float desired_roll, int speed) {
     Serial.printf("dt: %.4f\n", dt);
 
     mpu.getEvent(&a, &g, &temp);
-    float current_roll = (g.gyro.y * 57.2958) + 0.05; // Convert from rad/s to deg/s
+    float current_roll = (g.gyro.y * 57.2958) + 0.15; // Convert from rad/s to deg/s
     Serial.printf("Current Roll: %.4f\n", current_roll);
     
     float error = desired_roll - current_roll; // Calculate the error between desired and current roll
