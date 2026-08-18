@@ -3,6 +3,7 @@
 
 #include <Arduino.h>
 
+void motorSetup();
 
 extern const int MOTOR_PIN1;
 extern const int MOTOR_PIN2;

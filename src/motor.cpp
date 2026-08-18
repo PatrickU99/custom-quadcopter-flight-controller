@@ -23,3 +23,22 @@ uint32_t usToDuty(int us) {
     uint32_t maxDuty = (1UL << PWM_RES) - 1;
     return (uint32_t)((uint64_t)us * maxDuty / period_us);
 }
+
+void motorSetup() {
+    ledcSetup(PWM_CHANNEL1, PWM_FREQ, PWM_RES);
+    ledcSetup(PWM_CHANNEL2, PWM_FREQ, PWM_RES);
+    ledcSetup(PWM_CHANNEL3, PWM_FREQ, PWM_RES);
+    ledcSetup(PWM_CHANNEL4, PWM_FREQ, PWM_RES);
+  
+    ledcAttachPin(MOTOR_PIN1, PWM_CHANNEL1);
+    ledcAttachPin(MOTOR_PIN2, PWM_CHANNEL2);
+    ledcAttachPin(MOTOR_PIN3, PWM_CHANNEL3);
+    ledcAttachPin(MOTOR_PIN4, PWM_CHANNEL4);
+  
+    Serial.println("Arming... hold clear of the motor.");
+  
+    ledcWrite(PWM_CHANNEL1, usToDuty(ARM_US));
+    ledcWrite(PWM_CHANNEL2, usToDuty(ARM_US));
+    ledcWrite(PWM_CHANNEL3, usToDuty(ARM_US));
+    ledcWrite(PWM_CHANNEL4, usToDuty(ARM_US));
+}

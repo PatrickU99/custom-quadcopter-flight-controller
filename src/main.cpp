@@ -19,25 +19,15 @@ void setup() {
   mpuSetup(); // Initialize the MPU6050 sensor
   //median_offset(); // Calculate the median offsets for the accelerometer
   
-  ledcSetup(PWM_CHANNEL1, PWM_FREQ, PWM_RES);
-  ledcSetup(PWM_CHANNEL2, PWM_FREQ, PWM_RES);
-  ledcSetup(PWM_CHANNEL3, PWM_FREQ, PWM_RES);
-  ledcSetup(PWM_CHANNEL4, PWM_FREQ, PWM_RES);
+  motorSetup(); // Initialize the motors`
   
-  ledcAttachPin(MOTOR_PIN1, PWM_CHANNEL1);
-  ledcAttachPin(MOTOR_PIN2, PWM_CHANNEL2);
-  ledcAttachPin(MOTOR_PIN3, PWM_CHANNEL3);
-  ledcAttachPin(MOTOR_PIN4, PWM_CHANNEL4);
   
-  Serial.println("Arming... hold clear of the motor.");
-  
-  ledcWrite(PWM_CHANNEL1, usToDuty(ARM_US));
-  ledcWrite(PWM_CHANNEL2, usToDuty(ARM_US));
-  ledcWrite(PWM_CHANNEL3, usToDuty(ARM_US));
-  ledcWrite(PWM_CHANNEL4, usToDuty(ARM_US));
   
   delay(4000);
+  mpu.getEvent(&a, &g, &temp);
   gyro_last_update = micros();
+  float current_pitch = (g.gyro.x * 57.2958) + 3.49; // Convert from rad/s to deg/s
+  Serial.printf("Current Setup Pitch: %.4f\n", current_pitch);
   Serial.println("Armed. Press 's' to start. and press p to stop.");
   
 }
@@ -54,6 +44,8 @@ void loop() {
       ledcWrite(PWM_CHANNEL4, usToDuty(ARM_US));
       integral_roll = 0; // Reset the integral term when stopping
       last_error_roll = 0; // Reset the last error when stopping
+      integral_pitch = 0; // Reset the integral term for pitch when stopping
+      last_error_pitch = 0; // Reset the last error for pitch when stopping
 
       if (running) {
         gyro_last_update = micros();
@@ -63,7 +55,7 @@ void loop() {
   
  
   if (running) {
-    rate_roll_loop(1500, 0); // Call the rate roll loop function with the desired speed and roll
+    rate_loop(1500, 0, 0); // Call the rate loop function with the desired speed and roll
   }
   lastButtonState = buttonPressed;
   delay(3); // Small delay to avoid bouncing issues with the button
