@@ -46,6 +46,9 @@ void loop() {
       last_error_roll = 0; // Reset the last error when stopping
       integral_pitch = 0; // Reset the integral term for pitch when stopping
       last_error_pitch = 0; // Reset the last error for pitch when stopping
+      integral_yaw = 0; // Reset the integral term for pitch when stopping
+      last_error_yaw = 0; // Reset the last error for pitch when stopping
+
 
       if (running) {
         gyro_last_update = micros();
@@ -55,7 +58,7 @@ void loop() {
   
  
   if (running) {
-    rate_loop(1500, 0, 0); // Call the rate loop function with the desired speed and roll
+    rate_loop(1500, 0, 0, 0); // Call the rate loop function with the desired speed and roll
   }
   lastButtonState = buttonPressed;
   delay(3); // Small delay to avoid bouncing issues with the button

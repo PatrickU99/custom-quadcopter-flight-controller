@@ -6,12 +6,14 @@ void rate_roll_pid(float desired_roll, int speed);
 
 void rate_pitch_pid(float desired_pitch, int speed);
 
-void rate_loop(int speed, float desired_roll, float desired_pitch);
+void rate_loop(int speed, float desired_roll, float desired_pitch, float desired_yaw);
 
 
 extern float integral_roll; // Integral term for roll PID
 extern float last_error_roll; // Last error value for roll PID
 extern float integral_pitch; // Integral term for pitch PID
 extern float last_error_pitch; // Last error value for pitch PID
+extern float integral_yaw; // Integral term for pitch PID
+extern float last_error_yaw; // Last error value for pitch PID
 
 #endif // rate_pid_h
