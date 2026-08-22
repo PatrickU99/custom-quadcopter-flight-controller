@@ -5,9 +5,15 @@
 #include "mpu.h"
 #include "rate_pid.h"
  
-#define BUTTON_A 1 // Pin for the button to start/stop the motors 
+#define BUTTON_D 1 // Pin for the button to start/stop the motors 
+#define BUTTON_A 42
+#define BUTTON_B 41
 bool running = false; // becomes false once 'p' is pressed
-static bool lastButtonState = HIGH; // Track the last state of the button to detect changes
+static bool lastButtonState = true; // Track the last state of the buttonD to detect changes
+static bool lastButtonStateA = true; // Track the last state of the buttonA to detect changes
+static bool lastButtonStateB = true; // Track the last state of the buttonB to detect changes
+
+int speed = 1300;
 
 void setup() {
    
@@ -15,7 +21,9 @@ void setup() {
   unsigned long start = millis();
   while (!Serial && millis() - start < 5000) { }
   
-  pinMode(BUTTON_A, INPUT_PULLDOWN); // Enable internal pull-up resistor for the button pin
+  pinMode(BUTTON_D, INPUT_PULLDOWN); // Enable internal pull-down resistor for the button pin
+  pinMode(BUTTON_A, INPUT_PULLDOWN);
+  pinMode(BUTTON_B, INPUT_PULLDOWN);
   mpuSetup(); // Initialize the MPU6050 sensor
   //median_offset(); // Calculate the median offsets for the accelerometer
   
@@ -35,7 +43,9 @@ void setup() {
 void loop() {
   //complimentary_filter(); // Apply the complementary filter to combine gyro and accelerometer data
   
-  bool buttonPressed = (digitalRead(BUTTON_A) == HIGH); // Check if the button is pressed (active HIGH)
+  bool buttonPressed = (digitalRead(BUTTON_D) == HIGH); // Check if the button is pressed (active HIGH)
+  bool accelerate_button = (digitalRead(BUTTON_A) == HIGH);
+  bool decelerate_button = (digitalRead(BUTTON_B) == HIGH);  
     if (buttonPressed && !lastButtonState) {
       running = !running; // Toggle the running state when the button is pressed
       ledcWrite(PWM_CHANNEL1, usToDuty(ARM_US));
@@ -48,7 +58,7 @@ void loop() {
       last_error_pitch = 0; // Reset the last error for pitch when stopping
       integral_yaw = 0; // Reset the integral term for pitch when stopping
       last_error_yaw = 0; // Reset the last error for pitch when stopping
-
+      speed = 1480;
 
       if (running) {
         gyro_last_update = micros();
@@ -58,7 +68,16 @@ void loop() {
   
  
   if (running) {
-    rate_loop(1500, 0, 0, 0); // Call the rate loop function with the desired speed and roll
+    rate_loop(speed, 0, 0, 0); // Call the rate loop function with the desired speed and roll
+
+    if (accelerate_button && !lastButtonStateA) {
+      speed = constrain(speed + 10, 1000, 2000);
+    } else if (decelerate_button && !lastButtonStateB) {
+      speed = constrain(speed - 10, 1000, 2000);
+    }
+  lastButtonStateB = decelerate_button;
+  lastButtonStateA = accelerate_button;
+  
   }
   lastButtonState = buttonPressed;
   delay(3); // Small delay to avoid bouncing issues with the button

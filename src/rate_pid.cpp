@@ -5,17 +5,17 @@
 #include "rate_pid.h"
 #include "motor.h"
 
-#define KPR 4
-#define KIR 0
-#define KDR 0.13
+#define KPR 2
+#define KIR 0.3
+#define KDR 0.065
 
-#define KPP 4
-#define KIP 0.6
-#define KDP 0.13
+#define KPP 2
+#define KIP 0.3
+#define KDP 0.065
 
-#define KPY 4
-#define KIY 0.6
-#define KDY 0.13
+#define KPY 3
+#define KIY 0.45
+#define KDY 0.1
 
 float dt; // Time difference between gyro readings in seconds
 float integral_roll = 0; // Integral term for roll PID
@@ -98,7 +98,6 @@ void rate_pitch_pid(float desired_pitch, int speed) {
     pitch_side_b = pitch_correction; // Command for the other side of the
     
     last_error_pitch = error; // Update the last error value for the next iteration
-    Serial.printf("Integral Pitch: %.4f\n", integral_pitch);
     gyro_last_update = micros();
 }
 
@@ -127,7 +126,6 @@ void rate_yaw_pid(float desired_yaw, int speed) {
     yaw_side_b = yaw_correction; // Command for the other side of the
     
     last_error_yaw = error; // Update the last error value for the next iteration
-    Serial.printf("Integral Yaw: %.4f\n", integral_yaw);
     gyro_last_update = micros();
 }
 
@@ -135,14 +133,18 @@ void rate_yaw_pid(float desired_yaw, int speed) {
 void rate_loop(int speed, float desired_roll, float desired_pitch, float desired_yaw) {
     dt = (micros() - gyro_last_update) / 1000000.0; // Calculate the time difference in seconds
     mpu.getEvent(&a, &g, &temp);
-    //rate_roll_pid(desired_roll, speed); // Call the PID controller with a desired roll of 0 degrees and the given speed
-    //rate_pitch_pid(desired_pitch, speed); // Call the PID controller with a desired pitch of 0 degrees and the given speed
+    rate_roll_pid(desired_roll, speed); // Call the PID controller with a desired roll of 0 degrees and the given speed
+    rate_pitch_pid(desired_pitch, speed); // Call the PID controller with a desired pitch of 0 degrees and the given speed
     rate_yaw_pid(desired_yaw, speed);
     
-    ledcWrite(PWM_CHANNEL1, usToDuty(constrain(yaw_side_a + speed, 1000, 2000))); 
-    ledcWrite(PWM_CHANNEL2, usToDuty(constrain(yaw_side_b + speed, 1000, 2000))); 
-    ledcWrite(PWM_CHANNEL3, usToDuty(constrain(yaw_side_a + speed, 1000, 2000))); 
-    ledcWrite(PWM_CHANNEL4, usToDuty(constrain(yaw_side_b + speed, 1000, 2000)));
-    Serial.printf("Motor Side A: %.2f\n", constrain(yaw_side_a + speed, 1000, 2000));
-    Serial.printf("Motor Side B: %.2f\n", constrain(yaw_side_b + speed, 1000, 2000));
+    ledcWrite(PWM_CHANNEL1, usToDuty(constrain(roll_side_b + pitch_side_a + yaw_side_a + speed, 1000, 2000))); 
+    ledcWrite(PWM_CHANNEL2, usToDuty(constrain(roll_side_a + pitch_side_a + yaw_side_b + speed, 1000, 2000))); 
+    ledcWrite(PWM_CHANNEL3, usToDuty(constrain(roll_side_a + pitch_side_b + yaw_side_a + speed, 1000, 2000))); 
+    ledcWrite(PWM_CHANNEL4, usToDuty(constrain(roll_side_b + pitch_side_b + yaw_side_b + speed, 1000, 2000)));
+    Serial.printf("Motor Side A: %.2f\n", constrain(roll_side_b + pitch_side_a + yaw_side_a + speed, 1000, 2000));
+    Serial.printf("Motor Side B: %.2f\n", constrain(roll_side_a + pitch_side_a + yaw_side_b + speed, 1000, 2000));
+    Serial.printf("Motor Side C: %.2f\n", constrain(roll_side_a + pitch_side_b + yaw_side_a + speed, 1000, 2000));
+    Serial.printf("Motor Side D: %.2f\n", constrain(roll_side_b + pitch_side_b + yaw_side_b + speed, 1000, 2000));
+    Serial.printf("Speed: %d\n", speed);
+    
 }
