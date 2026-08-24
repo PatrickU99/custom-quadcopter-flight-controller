@@ -58,7 +58,7 @@ void loop() {
       last_error_pitch = 0; // Reset the last error for pitch when stopping
       integral_yaw = 0; // Reset the integral term for pitch when stopping
       last_error_yaw = 0; // Reset the last error for pitch when stopping
-      speed = 1480;
+      speed = 1600;
 
       if (running) {
         gyro_last_update = micros();

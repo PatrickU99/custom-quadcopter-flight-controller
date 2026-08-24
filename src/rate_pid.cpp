@@ -5,17 +5,22 @@
 #include "rate_pid.h"
 #include "motor.h"
 
-#define KPR 2
-#define KIR 0.3
-#define KDR 0.065
+#define KPR 1
+#define KIR 0.15
+#define KDR 0.045
 
-#define KPP 2
-#define KIP 0.3
-#define KDP 0.065
+#define KPP 1
+#define KIP 0.15
+#define KDP 0.045
 
-#define KPY 3
-#define KIY 0.45
-#define KDY 0.1
+#define KPY 1.5
+#define KIY 0.225
+#define KDY 0.05
+
+const int TRIM1 = 0;
+const int TRIM2 = -300;
+const int TRIM3 = -50;
+const int TRIM4 = -225;
 
 float dt; // Time difference between gyro readings in seconds
 float integral_roll = 0; // Integral term for roll PID
@@ -45,11 +50,11 @@ float yaw_side_b; // Command to the motor based on PID output
 
 
 void rate_roll_pid(float desired_roll, int speed) {
-    Serial.printf("dt: %.4f\n", dt);
+    
 
     
     float current_roll = (g.gyro.y * 57.2958) + 0.15; // Convert from rad/s to deg/s
-    Serial.printf("Current Roll: %.4f\n", current_roll);
+    
     
     float error = desired_roll - current_roll; // Calculate the error between desired and current roll
     proportional_roll = KPR * error; // Calculate the proportional term
@@ -74,10 +79,10 @@ void rate_roll_pid(float desired_roll, int speed) {
 }
 
 void rate_pitch_pid(float desired_pitch, int speed) {
-    Serial.printf("dt: %.4f\n", dt);
+    
 
     float current_pitch = (g.gyro.x * 57.2958) + 3.49; // Convert from rad/s to deg/s
-    Serial.printf("Current Pitch: %.4f\n", current_pitch);
+    
     
     float error = desired_pitch - current_pitch; // Calculate the error between desired and current pitch
     proportional_pitch = KPP * error; // Calculate the proportional term
@@ -102,10 +107,10 @@ void rate_pitch_pid(float desired_pitch, int speed) {
 }
 
 void rate_yaw_pid(float desired_yaw, int speed) {
-    Serial.printf("dt: %.4f\n", dt);
+    
 
     float current_yaw = (g.gyro.z * 57.2958); // Convert from rad/s to deg/s
-    Serial.printf("Current Yaw: %.4f\n", current_yaw);
+    
     
     float error = desired_yaw - current_yaw; // Calculate the error between desired and current pitch
     proportional_yaw = KPY * error; // Calculate the proportional term
@@ -137,14 +142,46 @@ void rate_loop(int speed, float desired_roll, float desired_pitch, float desired
     rate_pitch_pid(desired_pitch, speed); // Call the PID controller with a desired pitch of 0 degrees and the given speed
     rate_yaw_pid(desired_yaw, speed);
     
-    ledcWrite(PWM_CHANNEL1, usToDuty(constrain(roll_side_b + pitch_side_a + yaw_side_a + speed, 1000, 2000))); 
-    ledcWrite(PWM_CHANNEL2, usToDuty(constrain(roll_side_a + pitch_side_a + yaw_side_b + speed, 1000, 2000))); 
-    ledcWrite(PWM_CHANNEL3, usToDuty(constrain(roll_side_a + pitch_side_b + yaw_side_a + speed, 1000, 2000))); 
-    ledcWrite(PWM_CHANNEL4, usToDuty(constrain(roll_side_b + pitch_side_b + yaw_side_b + speed, 1000, 2000)));
-    Serial.printf("Motor Side A: %.2f\n", constrain(roll_side_b + pitch_side_a + yaw_side_a + speed, 1000, 2000));
-    Serial.printf("Motor Side B: %.2f\n", constrain(roll_side_a + pitch_side_a + yaw_side_b + speed, 1000, 2000));
-    Serial.printf("Motor Side C: %.2f\n", constrain(roll_side_a + pitch_side_b + yaw_side_a + speed, 1000, 2000));
-    Serial.printf("Motor Side D: %.2f\n", constrain(roll_side_b + pitch_side_b + yaw_side_b + speed, 1000, 2000));
-    Serial.printf("Speed: %d\n", speed);
+    // Compute each motor's correction (offset from base speed), UNCLAMPED
+    float corr1 = roll_side_b + pitch_side_a + yaw_side_a;
+    float corr2 = roll_side_a + pitch_side_a + yaw_side_b;
+    float corr3 = roll_side_a + pitch_side_b + yaw_side_a;
+    float corr4 = roll_side_b + pitch_side_b + yaw_side_b;
+ 
+    // Available headroom above/below the base speed before hitting 1000/2000
+    float headroomAbove = 2000 - speed;
+    float headroomBelow = speed - 1000;
+ 
+    // Find the largest positive and largest negative correction demanded
+    float maxPos = max(max(corr1, corr2), max(corr3, corr4));
+    float maxNeg = min(min(corr1, corr2), min(corr3, corr4)); // negative or zero
+ 
+    // Compute scale factor needed to keep every motor within range (never scale UP, only down)
+    float scale = 1.0;
+    if (maxPos > headroomAbove && maxPos > 0) {
+        scale = min(scale, headroomAbove / maxPos);
+    }
+    if (maxNeg < -headroomBelow && maxNeg < 0) {
+        scale = min(scale, -headroomBelow / maxNeg); // both negative, ratio is positive
+    }
+ 
+    // Apply the same scale to all four corrections - preserves the ratio between axes
+    corr1 *= scale;
+    corr2 *= scale;
+    corr3 *= scale;
+    corr4 *= scale;
+ 
+    int m1 = constrain((int)(speed + corr1 + TRIM1), 1000, 2000); // final safety net
+    int m2 = constrain((int)(speed + corr2 + TRIM2), 1000, 2000);
+    int m3 = constrain((int)(speed + corr3 + TRIM3), 1000, 2000);
+    int m4 = constrain((int)(speed + corr4 + TRIM4), 1000, 2000);
+ 
+    ledcWrite(PWM_CHANNEL1, usToDuty(m1));
+    ledcWrite(PWM_CHANNEL2, usToDuty(m2));
+    ledcWrite(PWM_CHANNEL3, usToDuty(m3));
+    ledcWrite(PWM_CHANNEL4, usToDuty(m4));
+ 
+    
+    
     
 }
