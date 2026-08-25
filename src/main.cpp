@@ -58,7 +58,7 @@ void loop() {
       last_error_pitch = 0; // Reset the last error for pitch when stopping
       integral_yaw = 0; // Reset the integral term for pitch when stopping
       last_error_yaw = 0; // Reset the last error for pitch when stopping
-      speed = 1600;
+      speed = 1630;
 
       if (running) {
         gyro_last_update = micros();
@@ -69,7 +69,6 @@ void loop() {
  
   if (running) {
     rate_loop(speed, 0, 0, 0); // Call the rate loop function with the desired speed and roll
-
     if (accelerate_button && !lastButtonStateA) {
       speed = constrain(speed + 10, 1000, 2000);
     } else if (decelerate_button && !lastButtonStateB) {

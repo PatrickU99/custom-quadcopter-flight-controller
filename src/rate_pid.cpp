@@ -17,6 +17,7 @@
 #define KIY 0.225
 #define KDY 0.05
 
+//offsets so that each motor is calibrated to the same rates
 const int TRIM1 = 0;
 const int TRIM2 = -300;
 const int TRIM3 = -50;
@@ -41,6 +42,10 @@ float proportional_yaw; // Proportional term for pitch PID
 float derivative_yaw; // Derivative term for pitch PID
 float last_error_yaw = 0; // Last error value for pitch PID
 
+float current_pitch = 0.0;
+float current_yaw = 0.0;
+float current_roll = 0.0;
+
 float roll_side_a; // Command to the motor based on PID output
 float roll_side_b; // Command to the motor based on PID output
 float pitch_side_a; // Command to the motor based on PID output
@@ -53,7 +58,7 @@ void rate_roll_pid(float desired_roll, int speed) {
     
 
     
-    float current_roll = (g.gyro.y * 57.2958) + 0.15; // Convert from rad/s to deg/s
+    current_roll = (g.gyro.y * 57.2958) + 0.15; // Convert from rad/s to deg/s
     
     
     float error = desired_roll - current_roll; // Calculate the error between desired and current roll
@@ -81,7 +86,7 @@ void rate_roll_pid(float desired_roll, int speed) {
 void rate_pitch_pid(float desired_pitch, int speed) {
     
 
-    float current_pitch = (g.gyro.x * 57.2958) + 3.49; // Convert from rad/s to deg/s
+    current_pitch = (g.gyro.x * 57.2958) + 3.49; // Convert from rad/s to deg/s
     
     
     float error = desired_pitch - current_pitch; // Calculate the error between desired and current pitch
@@ -109,8 +114,7 @@ void rate_pitch_pid(float desired_pitch, int speed) {
 void rate_yaw_pid(float desired_yaw, int speed) {
     
 
-    float current_yaw = (g.gyro.z * 57.2958); // Convert from rad/s to deg/s
-    
+    current_yaw = (g.gyro.z * 57.2958); // Convert from rad/s to deg/s
     
     float error = desired_yaw - current_yaw; // Calculate the error between desired and current pitch
     proportional_yaw = KPY * error; // Calculate the proportional term
@@ -180,8 +184,6 @@ void rate_loop(int speed, float desired_roll, float desired_pitch, float desired
     ledcWrite(PWM_CHANNEL2, usToDuty(m2));
     ledcWrite(PWM_CHANNEL3, usToDuty(m3));
     ledcWrite(PWM_CHANNEL4, usToDuty(m4));
- 
-    
-    
-    
+    Serial.printf("Yaw: %.4f  Pitch: %.4f  Roll: %.4f  Scale: %.2f\n", 
+              current_yaw, current_pitch, current_roll, scale);
 }
