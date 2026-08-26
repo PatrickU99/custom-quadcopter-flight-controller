@@ -15,5 +15,5 @@ extern float integral_rate_pitch; // Integral term for pitch PID
 extern float last_error_rate_pitch; // Last error value for pitch PID
 extern float integral_rate_yaw; // Integral term for pitch PID
 extern float last_error_rate_yaw; // Last error value for pitch PID
-
+extern float last_scale;
 #endif // rate_pid_h

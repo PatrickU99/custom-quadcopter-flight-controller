@@ -54,6 +54,7 @@ float pitch_side_b; // Command to the motor based on PID output
 float yaw_side_a; // Command to the motor based on PID output
 float yaw_side_b; // Command to the motor based on PID output
 
+float last_scale = 1.0;
 
 void rate_roll_pid(float desired_roll, int speed) {
     
@@ -65,7 +66,7 @@ void rate_roll_pid(float desired_roll, int speed) {
     float error = desired_roll - current_roll_rate; // Calculate the error between desired and current roll
     proportional_rate_roll = KPR * error; // Calculate the proportional term
     
-    if (speed + proportional_rate_roll + (KIR * (error * dt + integral_rate_roll)) < 2000 
+    if (last_scale >= 0.99 && speed + proportional_rate_roll + (KIR * (error * dt + integral_rate_roll)) < 2000 
     && speed + proportional_rate_roll + (KIR * (error * dt + integral_rate_roll)) > 1000 
     && speed - proportional_rate_roll + (KIR * (error * dt + integral_rate_roll)) < 2000 
     && speed - proportional_rate_roll + (KIR * (error * dt + integral_rate_roll)) > 1000) {
@@ -93,7 +94,7 @@ void rate_pitch_pid(float desired_pitch, int speed) {
     float error = desired_pitch - current_pitch_rate; // Calculate the error between desired and current pitch
     proportional_rate_pitch = KPP * error; // Calculate the proportional term
     
-    if (speed + proportional_rate_pitch + (KIP * (error * dt + integral_rate_pitch)) < 2000 
+    if (last_scale >= 0.99 && speed + proportional_rate_pitch + (KIP * (error * dt + integral_rate_pitch)) < 2000 
     && speed + proportional_rate_pitch + (KIP * (error * dt + integral_rate_pitch)) > 1000 
     && speed - proportional_rate_pitch + (KIP * (error * dt + integral_rate_pitch)) < 2000 
     && speed - proportional_rate_pitch + (KIP * (error * dt + integral_rate_pitch)) > 1000) {
@@ -120,7 +121,7 @@ void rate_yaw_pid(float desired_yaw, int speed) {
     float error = desired_yaw - current_yaw_rate; // Calculate the error between desired and current pitch
     proportional_rate_yaw = KPY * error; // Calculate the proportional term
     
-    if (speed + proportional_rate_yaw + (KIY * (error * dt + integral_rate_yaw)) < 2000 
+    if (last_scale >= 0.99 && speed + proportional_rate_yaw + (KIY * (error * dt + integral_rate_yaw)) < 2000 
     && speed + proportional_rate_yaw + (KIY * (error * dt + integral_rate_yaw)) > 1000 
     && speed - proportional_rate_yaw + (KIY * (error * dt + integral_rate_yaw)) < 2000 
     && speed - proportional_rate_yaw + (KIY * (error * dt + integral_rate_yaw)) > 1000) {
@@ -184,6 +185,8 @@ void rate_loop(int speed, float desired_roll, float desired_pitch, float desired
     ledcWrite(PWM_CHANNEL2, usToDuty(m2));
     ledcWrite(PWM_CHANNEL3, usToDuty(m3));
     ledcWrite(PWM_CHANNEL4, usToDuty(m4));
+    
+    last_scale = scale;
     Serial.printf("Yaw: %.4f Scale: %.2f\n", 
               current_yaw_rate, scale);
 }

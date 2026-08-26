@@ -55,13 +55,14 @@ Rates rates; // Structure to hold the gyro rates in degrees per second
 Angles gyro_angles; // for angle approximations
 Angles accel_angles; // for angle approximations
 
-#define APR 0
-#define AIR 0
-#define ADR 0
+//angle PID constants
+#define APR 2 
+#define AIR 0.3
+#define ADR 0.15
 
-#define APP 0
-#define AIP 0
-#define ADP 0
+#define APP 2
+#define AIP 0.3
+#define ADP 0.15
 
 float dt;
 float current_roll_angle;
@@ -78,6 +79,8 @@ float integral_angle_pitch = 0; // Integral term for pitch PID
 float proportional_angle_pitch; // Proportional term for pitch PID
 float derivative_angle_pitch; // Derivative term for pitch PID
 float last_error_angle_pitch = 0; // Last error value for pitch PID
+
+
 
 void rotational_rates() {
     mpu.getEvent(&a, &g, &temp);
@@ -156,7 +159,7 @@ void angle_roll_pid(float desired_roll, int speed) {
     float error = desired_roll - current_roll_angle; // Calculate the error between desired and current roll
     proportional_angle_roll = APR * error; // Calculate the proportional term
     
-    if (speed + proportional_angle_roll + (AIR * (error * dt + integral_angle_roll)) < 2000 
+    if (last_scale >= 0.99 && speed + proportional_angle_roll + (AIR * (error * dt + integral_angle_roll)) < 2000 
     && speed + proportional_angle_roll + (AIR * (error * dt + integral_angle_roll)) > 1000 
     && speed - proportional_angle_roll + (AIR * (error * dt + integral_angle_roll)) < 2000 
     && speed - proportional_angle_roll + (AIR * (error * dt + integral_angle_roll)) > 1000) {
@@ -164,7 +167,7 @@ void angle_roll_pid(float desired_roll, int speed) {
         integral_angle_roll += error * dt; // Update the integral term only if within bounds
     }
 
-    derivative_angle_roll = ADR * ((error - last_error_angle_roll) / dt); // Calculate the derivative term
+    derivative_angle_roll = -ADR * rates.y; // Calculate the derivative term
 
 
     roll_angle_correction = proportional_angle_roll + (AIR * integral_angle_roll) + derivative_angle_roll ; // Calculate the motor command based on PID output
@@ -179,7 +182,7 @@ void angle_pitch_pid(float desired_pitch, int speed) {
     float error = desired_pitch - current_pitch_angle; // Calculate the error between desired and current pitch
     proportional_angle_pitch = APP * error; // Calculate the proportional term
     
-    if (speed + proportional_angle_pitch + (AIP * (error * dt + integral_angle_pitch)) < 2000 
+    if (last_scale >= 0.99 && speed + proportional_angle_pitch + (AIP * (error * dt + integral_angle_pitch)) < 2000 
     && speed + proportional_angle_pitch + (AIP * (error * dt + integral_angle_pitch)) > 1000 
     && speed - proportional_angle_pitch + (AIP * (error * dt + integral_angle_pitch)) < 2000 
     && speed - proportional_angle_pitch + (AIP * (error * dt + integral_angle_pitch)) > 1000) {
@@ -187,7 +190,7 @@ void angle_pitch_pid(float desired_pitch, int speed) {
         integral_angle_pitch += error * dt; // Update the integral term only if within bounds
     }
 
-    derivative_angle_pitch = ADP * ((error - last_error_angle_pitch) / dt); // Calculate the derivative term
+    derivative_angle_pitch = -ADP * rates.x; // Calculate the derivative term
 
 
     pitch_angle_correction = proportional_angle_pitch + (AIP * integral_angle_pitch) + derivative_angle_pitch ; // Calculate the motor command based on PID output
