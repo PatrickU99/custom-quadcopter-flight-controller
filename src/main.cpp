@@ -2,8 +2,9 @@
 #include <Arduino.h>
 #include <Wire.h>
 #include "motor.h"
-#include "mpu.h"
+#include "mpu_setup.h"
 #include "rate_pid.h"
+#include "angle_pid.h"
  
 #define BUTTON_D 1 // Pin for the button to start/stop the motors 
 #define BUTTON_A 42
@@ -25,7 +26,7 @@ void setup() {
   pinMode(BUTTON_A, INPUT_PULLDOWN);
   pinMode(BUTTON_B, INPUT_PULLDOWN);
   mpuSetup(); // Initialize the MPU6050 sensor
-  //median_offset(); // Calculate the median offsets for the accelerometer
+  median_offset(); // Calculate the median offsets for the accelerometer
   
   motorSetup(); // Initialize the motors`
   
@@ -41,7 +42,7 @@ void setup() {
 }
  
 void loop() {
-  //complimentary_filter(); // Apply the complementary filter to combine gyro and accelerometer data
+  
   
   bool buttonPressed = (digitalRead(BUTTON_D) == HIGH); // Check if the button is pressed (active HIGH)
   bool accelerate_button = (digitalRead(BUTTON_A) == HIGH);
@@ -52,12 +53,18 @@ void loop() {
       ledcWrite(PWM_CHANNEL2, usToDuty(ARM_US));
       ledcWrite(PWM_CHANNEL3, usToDuty(ARM_US));
       ledcWrite(PWM_CHANNEL4, usToDuty(ARM_US));
-      integral_roll = 0; // Reset the integral term when stopping
-      last_error_roll = 0; // Reset the last error when stopping
-      integral_pitch = 0; // Reset the integral term for pitch when stopping
-      last_error_pitch = 0; // Reset the last error for pitch when stopping
-      integral_yaw = 0; // Reset the integral term for pitch when stopping
-      last_error_yaw = 0; // Reset the last error for pitch when stopping
+      integral_rate_roll = 0; // Reset the integral term when stopping
+      last_error_rate_roll = 0; // Reset the last error when stopping
+      integral_rate_pitch = 0; // Reset the integral term for pitch when stopping
+      last_error_rate_pitch = 0; // Reset the last error for pitch when stopping
+      integral_rate_yaw = 0; // Reset the integral term for pitch when stopping
+      last_error_rate_yaw = 0; // Reset the last error for pitch when stopping
+
+      integral_angle_roll = 0; // Reset the integral term when stopping
+      last_error_angle_roll = 0; // Reset the last error when stopping
+      integral_angle_pitch = 0; // Reset the integral term for pitch when stopping
+      last_error_angle_pitch = 0; // Reset the last error for pitch when stopping
+
       speed = 1630;
 
       if (running) {
@@ -68,7 +75,7 @@ void loop() {
   
  
   if (running) {
-    rate_loop(speed, 0, 0, 0); // Call the rate loop function with the desired speed and roll
+    main_pid(speed, 0, 0, 0);
     if (accelerate_button && !lastButtonStateA) {
       speed = constrain(speed + 10, 1000, 2000);
     } else if (decelerate_button && !lastButtonStateB) {

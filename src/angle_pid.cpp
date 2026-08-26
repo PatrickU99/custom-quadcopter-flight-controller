@@ -1,11 +1,11 @@
 #include <Arduino.h>
 #include <Wire.h>
-#include "mpu.h"
+#include "mpu_setup.h"
 #include <Adafruit_MPU6050.h>
+#include "angle_pid.h"
 #include <queue>
+#include "rate_pid.h"
 
-Adafruit_MPU6050 mpu;// Create an instance of the MPU6050 class
-sensors_event_t a, g, temp; // Accelerometer, Gyroscope, Temperature events
 
 // Adjusted for gravity (9.81 m/s^2) and calibration (I got the first 100 readings and averaged them to find the offsets)
 float acceleration_x_offset; 
@@ -17,8 +17,8 @@ float acceleration_y_filtered;
 float acceleration_z_filtered;
 
 // adjusted for calibration (I got the first 100 readings and averaged them to find the offsets)
-float gyro_x_offset = 3.54; 
-float gyro_y_offset = -0.12; 
+float gyro_x_offset = 3.64; 
+float gyro_y_offset = 0; 
 float gyro_z_offset = 0.29; 
 
 float rad_to_deg = 57.2958; // Conversion factor from radians to degrees
@@ -26,7 +26,6 @@ float rad_to_deg = 57.2958; // Conversion factor from radians to degrees
 float gyro_part = 0.995; // Complementary filter coefficient for gyro
 float accel_part = 0.005; // Complementary filter coefficient for accelerometer
 
-float delta_t; // Time difference between gyro readings in seconds
 uint32_t gyro_last_update; // Store the last update time for gyro readings
 
 std::vector<float> vector_x; // Vectors to hold the last 11 readings for median filtering
@@ -38,7 +37,7 @@ std::vector<float> sorted_vector_y;
 std::vector<float> sorted_vector_z;
 
 int counter = 0; // Counter for the number of readings taken for median filtering recently. It will be used to index into the vectors and reset after 10 readings to maintain a rolling window of the last 11 readings.
-bool error;
+
 
 // Structures to hold the gyro rates and angles
 struct Rates {
@@ -55,19 +54,30 @@ struct Angles {
 Rates rates; // Structure to hold the gyro rates in degrees per second
 Angles gyro_angles; // for angle approximations
 Angles accel_angles; // for angle approximations
-void mpuSetup() {
-  Wire.begin(8, 9); // SDA, SCL
-  error = mpu.begin(0x68, &Wire); // I2C address, Wire object. Returns true/false for success
-  if (error == true) {
-    Serial.println("MPU6050 found!"); // MPU6050 detected
-  } else {
-    Serial.println("MPU6050 not detected - check wiring.");
-  }
-  mpu.setAccelerometerRange(MPU6050_RANGE_2_G); // Set accelerometer range to +/- 2g
-  mpu.setGyroRange(MPU6050_RANGE_250_DEG); // Set gyroscope range to +/- 250 degrees/second
-  mpu.setFilterBandwidth(MPU6050_BAND_21_HZ); // Set filter bandwidth to 21Hz
-}
 
+#define APR 0
+#define AIR 0
+#define ADR 0
+
+#define APP 0
+#define AIP 0
+#define ADP 0
+
+float dt;
+float current_roll_angle;
+float current_pitch_angle;
+
+float integral_angle_roll = 0; // Integral term for roll PID
+float proportional_angle_roll; // Proportional term for roll PID
+float derivative_angle_roll; // Derivative term for roll PID
+float roll_angle_correction; // Correction value for roll based on PID output
+float last_error_angle_roll = 0; // Last error value for roll PID
+
+float pitch_angle_correction; // Correction value for pitch based on PID output
+float integral_angle_pitch = 0; // Integral term for pitch PID
+float proportional_angle_pitch; // Proportional term for pitch PID
+float derivative_angle_pitch; // Derivative term for pitch PID
+float last_error_angle_pitch = 0; // Last error value for pitch PID
 
 void rotational_rates() {
     mpu.getEvent(&a, &g, &temp);
@@ -75,12 +85,11 @@ void rotational_rates() {
     rates.y = (g.gyro.y * rad_to_deg) + gyro_y_offset;
     rates.z = (g.gyro.z * rad_to_deg) + gyro_z_offset;
 
-    delta_t = (micros() - gyro_last_update) / 1000000.0; // Calculate time difference in seconds
-    gyro_angles.x += rates.x * delta_t; // Calculate the change in angle for each axis
-    gyro_angles.y += rates.y * delta_t;
-    gyro_angles.z += rates.z * delta_t;
+    gyro_angles.x += rates.x * dt; // Calculate the change in angle for each axis
+    gyro_angles.y += rates.y * dt;
+    gyro_angles.z += rates.z * dt;
     
-    gyro_last_update = micros(); // Update the last update time
+    
     
 }
 
@@ -140,13 +149,67 @@ void median_filterization(){
     }
 };
 
+void angle_roll_pid(float desired_roll, int speed) {
+    
+    current_roll_angle = gyro_angles.y; // Convert from rad/s to deg/s
+    
+    float error = desired_roll - current_roll_angle; // Calculate the error between desired and current roll
+    proportional_angle_roll = APR * error; // Calculate the proportional term
+    
+    if (speed + proportional_angle_roll + (AIR * (error * dt + integral_angle_roll)) < 2000 
+    && speed + proportional_angle_roll + (AIR * (error * dt + integral_angle_roll)) > 1000 
+    && speed - proportional_angle_roll + (AIR * (error * dt + integral_angle_roll)) < 2000 
+    && speed - proportional_angle_roll + (AIR * (error * dt + integral_angle_roll)) > 1000) {
+        
+        integral_angle_roll += error * dt; // Update the integral term only if within bounds
+    }
+
+    derivative_angle_roll = ADR * ((error - last_error_angle_roll) / dt); // Calculate the derivative term
+
+
+    roll_angle_correction = proportional_angle_roll + (AIR * integral_angle_roll) + derivative_angle_roll ; // Calculate the motor command based on PID output
+    
+    last_error_angle_roll = error; // Update the last error value for the next iteration
+    
+};
+void angle_pitch_pid(float desired_pitch, int speed) {
+
+    current_pitch_angle = gyro_angles.x; // Convert from rad/s to deg/s
+    
+    float error = desired_pitch - current_pitch_angle; // Calculate the error between desired and current pitch
+    proportional_angle_pitch = APP * error; // Calculate the proportional term
+    
+    if (speed + proportional_angle_pitch + (AIP * (error * dt + integral_angle_pitch)) < 2000 
+    && speed + proportional_angle_pitch + (AIP * (error * dt + integral_angle_pitch)) > 1000 
+    && speed - proportional_angle_pitch + (AIP * (error * dt + integral_angle_pitch)) < 2000 
+    && speed - proportional_angle_pitch + (AIP * (error * dt + integral_angle_pitch)) > 1000) {
+        
+        integral_angle_pitch += error * dt; // Update the integral term only if within bounds
+    }
+
+    derivative_angle_pitch = ADP * ((error - last_error_angle_pitch) / dt); // Calculate the derivative term
+
+
+    pitch_angle_correction = proportional_angle_pitch + (AIP * integral_angle_pitch) + derivative_angle_pitch ; // Calculate the motor command based on PID output
+
+    last_error_angle_pitch = error; // Update the last error value for the next iteration
+    
+};
+
 void complimentary_filter(){
     rotational_rates();
     median_filterization();
     gyro_angles.x = gyro_part * gyro_angles.x + accel_part * accel_angles.x; // Apply complementary filter for roll
     gyro_angles.y = gyro_part * gyro_angles.y + accel_part * accel_angles.y; // Apply complementary filter for pitch
     gyro_angles.z = gyro_angles.z; 
-
-    Serial.printf("Filtered Angles: X: %.2f, Y: %.2f, Z: %.2f\n", gyro_angles.x, gyro_angles.y, gyro_angles.z); // Print the filtered angles
+    Serial.printf("Filtered Angles: X: %.2f, Y: %.2f, Roll_Correction: %.4f, Pitch_Correction: %.4f\n", gyro_angles.x, gyro_angles.y, roll_angle_correction, pitch_angle_correction); // Print the filtered angles
 };
 
+void main_pid(int speed, float desired_roll, float desired_pitch, float desired_yaw) {
+    dt = (micros() - gyro_last_update) / 1000000.0; // Calculate the time difference in seconds
+    gyro_last_update = micros(); // Update the last update time
+    complimentary_filter();
+    angle_roll_pid(desired_roll, speed);
+    angle_pitch_pid(desired_pitch, speed);
+    rate_loop(speed, roll_angle_correction, pitch_angle_correction, desired_yaw);
+};
