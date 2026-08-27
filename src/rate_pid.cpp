@@ -21,8 +21,8 @@
 //offsets so that each motor is calibrated to the same rates
 const int TRIM1 = 0;
 const int TRIM2 = -300;
-const int TRIM3 = -50;
-const int TRIM4 = -225;
+const int TRIM3 = -40;
+const int TRIM4 = -205;
 
 
 float integral_rate_roll = 0; // Integral term for roll PID

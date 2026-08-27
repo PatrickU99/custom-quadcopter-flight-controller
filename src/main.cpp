@@ -65,7 +65,7 @@ void loop() {
       integral_angle_pitch = 0; // Reset the integral term for pitch when stopping
       last_error_angle_pitch = 0; // Reset the last error for pitch when stopping
 
-      speed = 1600;
+      speed = 1670;
 
       if (running) {
         gyro_last_update = micros();
@@ -77,9 +77,9 @@ void loop() {
   if (running) {
     main_pid(speed, 0, 0, 0);
     if (accelerate_button && !lastButtonStateA) {
-      speed = constrain(speed + 10, 1000, 2000);
+      speed = constrain(speed + 5, 1000, 2000);
     } else if (decelerate_button && !lastButtonStateB) {
-      speed = constrain(speed - 10, 1000, 2000);
+      speed = constrain(speed - 5, 1000, 2000);
     }
   lastButtonStateB = decelerate_button;
   lastButtonStateA = accelerate_button;
