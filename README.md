@@ -62,3 +62,6 @@ A few of the harder bugs, because the debugging process is arguably the more int
 - **ESC output mismatch**: a swap test (physically exchanging which ESC drove which motor position) isolated a logarithmic thrust inconsistency (thrust inconsistencies varied based on varying motor speeds).
   Inconsistencies were so large a pure software fix (a fixed PWM trim) could only partially compensate for it.
   Solution will be using a higher quality 4in1 esc with calibration software so motor thrust inconsistencies will decrease allowing for the PID loop to effectively stabilize and change orientation quick enough.
+
+## Video Demos
+Demo and Progress Videos: https://www.youtube.com/playlist?list=PLU0tfv0OoDTw
