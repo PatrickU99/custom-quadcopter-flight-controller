@@ -19,7 +19,17 @@ Battery: 3S LiPo
 Toolchain: PlatformIO + Arduino framework
 
 ## Architecture
-
+```mermaid
+flowchart TD
+    A["IMU sample<br/>(gyro + accel)"] --> B["Complementary filter"]
+    B --> C["Fused angle estimate<br/>(roll, pitch - fused angle estimate)"]
+    C --> D["Angle PID<br/>(outer loop - desired rate (setpoint for inner loop))"]
+    D --> E["Desired rate<br/>(desired rate setpoint for inner loop)"]
+    E --> F["Rate PID<br/>(inner loop)"]
+    F --> G["Per-axis correction<br/>((roll / pitch / yaw))"]
+    G --> H["Motor mixer<br/>(4× motor PWM commands with saturation-aware scaling)"]
+    H --> I["4× motor PWM commands"]
+```
 The control loop is a classic cascaded PID structure:
 
 IMU sample (gyro + accel)
