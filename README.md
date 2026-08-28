@@ -10,13 +10,13 @@ The scope was deliberately narrow: write the PID loops, the complementary filter
 
 ## Hardware
 
-**Frame** QAV250 (250mm, 5" props)
-**MCU** ESP32-S3-DevKitC-1 (N16R8)
-**IMU** MPU6050 (I2C)
-**ESCs** 4× individual 30A ESCs (will change for AERO SELFIE 45A 4in1 ESC 2-6S)
-**Motors** Readytosky MT2204 2300KV (2× CW, 2× CCW) |
-**Battery** 3S LiPo
-**Toolchain** PlatformIO + Arduino framework
+- **Frame** QAV250 (250mm, 5" props)
+- **MCU** ESP32-S3-DevKitC-1 (N16R8)
+- **IMU** MPU6050 (I2C)
+- **ESCs** 4× individual 30A ESCs (will change for AERO SELFIE 45A 4in1 ESC 2-6S)
+- **Motors** Readytosky MT2204 2300KV (2× CW, 2× CCW) |
+- **Battery** 3S LiPo
+- **Toolchain** PlatformIO + Arduino framework
 
 ## Architecture
 ```mermaid
@@ -38,11 +38,11 @@ flowchart TD
 
 ## Firmware structure
 
-**main.cpp** — setup()/loop() only; button handling; calls into other modules
-**motor.cpp/h** — LEDC PWM setup, duty-cycle conversion
-**mpu_setup.cpp/h** — MPU6050 initialization
-**angle_pid.cpp/h** — complementary filter, angle PID, main_pid() entry point
-**rate_pid.cpp/h**  — rate PID, motor mixer, motor output
+- **main.cpp** — setup()/loop() only; button handling; calls into other modules
+- **motor.cpp/h** — LEDC PWM setup, duty-cycle conversion
+- **mpu_setup.cpp/h** — MPU6050 initialization
+- **angle_pid.cpp/h** — complementary filter, angle PID, main_pid() entry point
+- **rate_pid.cpp/h**  — rate PID, motor mixer, motor output
 
 ## Status
 
