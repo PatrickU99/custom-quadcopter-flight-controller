@@ -10,41 +10,26 @@ The scope was deliberately narrow: write the PID loops, the complementary filter
 
 ## Hardware
 
-Frame: QAV250 (250mm, 5" props)
-MCU: ESP32-S3-DevKitC-1 (N16R8)
-IMU: MPU6050 (I2C)
-ESCs: 4× individual 30A ESCs (will change for AERO SELFIE 45A 4in1 ESC 2-6S)
-Motors: Readytosky MT2204 2300KV (2× CW, 2× CCW) |
-Battery: 3S LiPo
-Toolchain: PlatformIO + Arduino framework
+**Frame** QAV250 (250mm, 5" props)
+**MCU** ESP32-S3-DevKitC-1 (N16R8)
+**IMU** MPU6050 (I2C)
+**ESCs** 4× individual 30A ESCs (will change for AERO SELFIE 45A 4in1 ESC 2-6S)
+**Motors** Readytosky MT2204 2300KV (2× CW, 2× CCW) |
+**Battery** 3S LiPo
+**Toolchain** PlatformIO + Arduino framework
 
 ## Architecture
 ```mermaid
 flowchart TD
     A["IMU sample<br/>(gyro + accel)"] --> B["Complementary filter"]
-    B --> C["Fused angle estimate<br/>(roll, pitch - fused angle estimate)"]
-    C --> D["Angle PID<br/>(outer loop - desired rate (setpoint for inner loop))"]
-    D --> E["Desired rate<br/>(desired rate setpoint for inner loop)"]
+    B --> C["Fused angle estimate<br/>(roll, pitch)"]
+    C --> D["Angle PID<br/>(outer loop)"]
+    D --> E["Desired rate<br/>(setpoint for inner loop)"]
     E --> F["Rate PID<br/>(inner loop)"]
-    F --> G["Per-axis correction<br/>((roll / pitch / yaw))"]
-    G --> H["Motor mixer<br/>(4× motor PWM commands with saturation-aware scaling)"]
+    F --> G["Per-axis correction<br/>(roll / pitch / yaw)"]
+    G --> H["Motor mixer<br/>(saturation-aware scaling)"]
     H --> I["4× motor PWM commands"]
 ```
-The control loop is a classic cascaded PID structure:
-
-IMU sample (gyro + accel)
-        │
-        ▼
-Complementary filter  ──►  fused angle estimate (roll, pitch)
-        │
-        ▼
-Angle PID (outer loop)  ──►  desired rate (setpoint for inner loop)
-        │
-        ▼
-Rate PID (inner loop)  ──►  per-axis correction (roll / pitch / yaw)
-        │
-        ▼
-Motor mixer  ──►  4× motor PWM commands (with saturation-aware scaling)
 
 - **Rate mode** was built and flight-validated first — a fixed rate setpoint of 0, tuned and tested in real untethered flight.
 - **Angle (self-leveling) mode** feeds the angle loop's output in as the rate loop's setpoint, replacing the fixed 0 — the standard cascaded architecture. Yaw remains rate-only.
@@ -53,11 +38,11 @@ Motor mixer  ──►  4× motor PWM commands (with saturation-aware scaling)
 
 ## Firmware structure
 
-main.cpp        — setup()/loop() only; button handling; calls into other modules
-motor.cpp/h     — LEDC PWM setup, duty-cycle conversion
-mpu_setup.cpp/h — MPU6050 initialization
-angle_pid.cpp/h — complementary filter, angle PID, main_pid() entry point
-rate_pid.cpp/h  — rate PID, motor mixer, motor output
+**main.cpp** — setup()/loop() only; button handling; calls into other modules
+**motor.cpp/h** — LEDC PWM setup, duty-cycle conversion
+**mpu_setup.cpp/h** — MPU6050 initialization
+**angle_pid.cpp/h** — complementary filter, angle PID, main_pid() entry point
+**rate_pid.cpp/h**  — rate PID, motor mixer, motor output
 
 ## Status
 
@@ -70,8 +55,8 @@ rate_pid.cpp/h  — rate PID, motor mixer, motor output
 
 A few of the harder bugs, because the debugging process is arguably the more interesting part of a from-scratch build like this:
 
-- **`dt` collapsing to near-zero**: a shared timestamp variable was being overwritten multiple times per loop iteration by different PID sub-functions, causing the derivative term to spike and the integral term to stop accumulating meaningfully.
-  Fixed by making exactly one function, called once per loop, responsible for both computing `dt` and updating the timestamp.
+- **dt collapsing to near-zero**: a shared timestamp variable was being overwritten multiple times per loop iteration by different PID sub-functions, causing the derivative term to spike and the integral term to stop accumulating meaningfully.
+  Fixed by making exactly one function, called once per loop, responsible for both computing dt and updating the timestamp.
 - **Integral windup under mixer saturation**: per-axis integral clamping wasn't sufficient on its own, because the *global* mixer scale factor could still be shrinking the actual output even when a single axis's own bounds check passed.
   Fixed by gating integral accumulation on whether the mixer had to scale down on the previous iteration.
 - **ESC output mismatch**: a swap test (physically exchanging which ESC drove which motor position) isolated a logarithmic thrust inconsistency (thrust inconsistencies varied based on varying motor speeds).
